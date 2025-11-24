@@ -167,6 +167,12 @@ export function normalizeJavaScript(node) {
         text: node.text
       };
       
+    case "break_statement":
+      return {
+        type: "Break",
+        text: node.text
+      };
+      
     default:
       // For simple nodes with text, convert to expression
       // But skip comments and directives

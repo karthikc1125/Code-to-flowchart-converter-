@@ -1,0 +1,32 @@
+flowchart TD
+  START(["start"])
+  N1["let x: number = 10;"]
+  N2["let y: number = 20;"]
+  N3{"if x > 5"}
+  N4[/console.log(x is greater than 5)\]
+  N5{"if x > y"}
+  N6[/console.log(x is greater than y)\]
+  N7[/console.log(x is not greater than y)\]
+  N8{"if x === y"}
+  N9[/console.log(x equals y)\]
+  N10{"else if x < y"}
+  N11[/console.log(x is less than y)\]
+  N12[/console.log(x is greater than y)\]
+  END(["end"])
+  START --> N1
+  N1 --> N2
+  N2 --> N3
+  N3 -->|Yes| N4
+  N5 -->|Yes| N6
+  N5 -->|No| N7
+  N8 -->|Yes| N9
+  N10 -->|Yes| N11
+  N10 -->|No| N12
+  N8 -->|No| N10
+  N4 --> END
+  N3 -->|No| END
+  N6 --> END
+  N7 --> END
+  N11 --> END
+  N12 --> END
+  N9 --> END

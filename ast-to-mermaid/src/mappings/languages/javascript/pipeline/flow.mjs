@@ -18,6 +18,7 @@ import { mapIO } from '../../c/io/io.mjs';
 import { mapDecl } from '../../c/other-statements/declaration.mjs';
 import { mapExpr } from '../../c/other-statements/expression.mjs';
 import { mapBreakStatement } from '../other-statements/break.mjs';
+import { completeSwitch } from '../mappings/common/common.mjs';
 
 /**
  * Map JavaScript nodes to Mermaid flowchart nodes
@@ -43,23 +44,11 @@ export function mapNodeJavaScript(node, ctx, mapper) {
       }
     case "Switch": return mapSwitchStatement(node, ctx, mapper);
     case "Case": 
-      // Map the case and then process its consequent statements
-      mapCase(node, ctx);
-      if (node.consequent && Array.isArray(node.consequent)) {
-        node.consequent.forEach(statement => {
-          mapper(statement, ctx);
-        });
-      }
-      return;
+      // Map the case and process its consequent statements
+      return mapCase(node, ctx, mapper);
     case "Default": 
-      // Map the default and then process its consequent statements
-      mapDefault(node, ctx);
-      if (node.consequent && Array.isArray(node.consequent)) {
-        node.consequent.forEach(statement => {
-          mapper(statement, ctx);
-        });
-      }
-      return;
+      // Map the default and process its consequent statements
+      return mapDefault(node, ctx, mapper);
     case "For": return mapFor(node, ctx);
     case "While": return mapWhile(node, ctx);
     case "Function": return mapFunction(node, ctx);
@@ -92,6 +81,10 @@ export function generateFlowchart(sourceCode) {
   const mapper = (node, ctx) => {
     if (node && node.type) {
       mapNodeJavaScript(node, ctx, mapper);
+      // After processing a switch statement, complete it to connect break statements
+      if (node.type === 'Switch') {
+        completeSwitch(ctx);
+      }
     }
   };
   

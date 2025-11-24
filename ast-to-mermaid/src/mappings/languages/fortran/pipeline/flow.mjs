@@ -2,6 +2,7 @@ import { extractFortran } from '../extractors/fortran-extractor.mjs';
 import { normalizeFortran } from '../normalizer/normalize-fortran.mjs';
 import { walk } from '../walkers/walk.mjs';
 import { ctx } from '../mermaid/context.mjs';
+import { finalizeFlowContext } from '../mermaid/finalize-context.mjs';
 
 // Import mapping functions (reusing C mapping functions since they're similar)
 import { mapIf } from '../../c/conditional/if.mjs';
@@ -13,23 +14,29 @@ import { mapAssign } from '../../c/other-statements/assign.mjs';
 import { mapIO } from '../../c/io/io.mjs';
 import { mapDecl } from '../../c/other-statements/declaration.mjs';
 import { mapExpr } from '../../c/other-statements/expression.mjs';
+// Import switch statement mapping functions
+import { mapSelectCase, mapCase, mapCaseDefault } from '../conditional/switch/switch.mjs';
 
 /**
  * Map Fortran nodes to Mermaid flowchart nodes
  * @param {Object} node - Normalized Fortran node
  * @param {Object} ctx - Context for flowchart generation
  */
-export function mapNodeFortran(node, ctx) {
+export function mapNodeFortran(node, ctx, mapper) {
   switch (node.type) {
-    case "If": return mapIf(node, ctx);
-    case "For": return mapFor(node, ctx);
-    case "While": return mapWhile(node, ctx);
-    case "Function": return mapFunction(node, ctx);
-    case "Return": return mapReturn(node, ctx);
-    case "Assign": return mapAssign(node, ctx);
-    case "IO": return mapIO(node, ctx);
-    case "Decl": return mapDecl(node, ctx);
-    case "Expr": return mapExpr(node, ctx);
+    case "If": return mapIf(node, ctx, mapper);
+    case "For": return mapFor(node, ctx, mapper);
+    case "While": return mapWhile(node, ctx, mapper);
+    case "Function": return mapFunction(node, ctx, mapper);
+    case "Return": return mapReturn(node, ctx, mapper);
+    case "Assign": return mapAssign(node, ctx, mapper);
+    case "IO": return mapIO(node, ctx, mapper);
+    case "Decl": return mapDecl(node, ctx, mapper);
+    case "Expr": return mapExpr(node, ctx, mapper);
+    // Handle switch statements
+    case "SelectCase": return mapSelectCase(node, ctx, mapper);
+    case "Case": return mapCase(node, ctx, mapper);
+    case "CaseDefault": return mapCaseDefault(node, ctx, mapper);
   }
 }
 
@@ -89,7 +96,7 @@ export function generateFlowchart(sourceCode) {
         handle: (node) => {
           if (node && node.type) {
             // Use the mapping function to add nodes to the context
-            mapNodeFortran(node, context);
+            mapNodeFortran(node, context, mapNodeFortran);
           }
         }
       };
@@ -104,7 +111,7 @@ export function generateFlowchart(sourceCode) {
         handle: (node) => {
           if (node && node.type) {
             // Use the mapping function to add nodes to the context
-            mapNodeFortran(node, context);
+            mapNodeFortran(node, context, mapNodeFortran);
           }
         }
       };
@@ -113,94 +120,8 @@ export function generateFlowchart(sourceCode) {
     }
   }
   
-  // Complete any pending branches
-  if (context.completeBranches) {
-    context.completeBranches();
-  }
-  
-  // Handle completed if statements with branch convergence
-  if (context.completedIfStatements && context.completedIfStatements.length > 0) {
-    context.completedIfStatements.forEach(ifStmt => {
-      // Only handle if statements that have both branches completed
-      if (ifStmt.thenBranchLast && ifStmt.elseBranchLast) {
-        // Create a merge point for the if statement branches
-        let mergeId = context.next();
-        context.add(mergeId, '["assignment statement"]');  // Generic placeholder
-        
-        // Connect both branches to the merge point
-        context.addEdge(ifStmt.thenBranchLast, mergeId);
-        context.addEdge(ifStmt.elseBranchLast, mergeId);
-        
-        // Process any deferred statements at the merge point
-        let lastNodeId = mergeId;
-        if (context.deferredStatements && context.deferredStatements.length > 0) {
-          context.deferredStatements.forEach(deferred => {
-            if (deferred.type === 'assign') {
-              const deferredId = context.next();
-              context.add(deferredId, `[${deferred.text}]`);
-              context.addEdge(lastNodeId, deferredId);
-              lastNodeId = deferredId;
-            }
-          });
-          // Clear deferred statements
-          context.deferredStatements = [];
-        }
-        
-        // If we're in a loop, connect the merge point back to the loop condition
-        if (context.inLoop && context.loopContinueNode) {
-          context.addEdge(lastNodeId, context.loopContinueNode);
-        }
-        
-        // Set the merge point as the last node so subsequent nodes connect to it
-        context.last = lastNodeId;
-      }
-    });
-    
-    // Clear the completed if statements
-    context.completedIfStatements = [];
-  }
-  
-  // Handle if statement branches
-  // This is a simplified approach - in a full implementation, we would need
-  // a more sophisticated control flow analysis
-  
-  // Create a merge point for if statement branches if needed
-  if (context.ifConditionId) {
-    // In a full implementation, we would create proper branch convergence
-    // For now, we'll just complete any pending branches
-    // If we have candidates for merge points, connect them
-    if (context.ifMergeCandidate && context.last && context.ifMergeCandidate !== context.last) {
-      // Connect the last branch node to the current last node
-      // This is a simplified approach to branch convergence
-    }
-  }
-  
-  // Add end node
-  const endId = context.next();
-  context.add(endId, '(["end"])');
-  
-  // Store the end node ID for switch statements
-  if (context.switchEndNodes && context.switchEndNodes.length > 0) {
-    // Update the last switch end node reference
-    context.switchEndNodes[context.switchEndNodes.length - 1] = endId;
-  }
-  
-  // Connect any pending break statements to the end node
-  if (context.pendingBreaks && context.pendingBreaks.length > 0) {
-    context.pendingBreaks.forEach(breakInfo => {
-      const endNodeId = context.switchEndNodes[breakInfo.switchLevel];
-      if (endNodeId) {
-        context.addEdge(breakInfo.breakId, endNodeId);
-      }
-    });
-    // Clear pending breaks
-    context.pendingBreaks = [];
-  }
-  
-  // Connect last node to end node (only if there's a last node and it's not null)
-  if (context.last) {
-    context.addEdge(context.last, endId);
-  }
+  // Finalize the context
+  finalizeFlowContext(context);
   
   // 5. Emit final Mermaid flowchart
   return context.emit();

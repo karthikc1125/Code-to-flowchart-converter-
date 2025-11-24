@@ -7,6 +7,14 @@ import { detectLanguageLocal, detectLanguageAPI } from '../services/api';
 import { FaPaperPlane } from 'react-icons/fa';
 import { styled } from '@mui/material/styles';
 import MonacoEditor from '@monaco-editor/react';
+import ThemeSwitch from '../components/ThemeSwitchButton';
+import styledComp from 'styled-components';
+
+const Container = styledComp.div<{ theme?: { background: string, text: string } }>`
+  background-color: ${props => props.theme?.background || '#f5f7fa'};
+  color: ${props => props.theme?.text || '#222'};
+  min-height: 100vh;
+`;
 
 const ChatContainer = styled(Box)(({ theme }) => ({
   display: 'flex',
@@ -488,10 +496,12 @@ ${response}
 
 
     return (
-        <Box sx={{ maxWidth: 1300, mx: 'auto', p: 4 }}>
-            <Box sx={{ position: 'fixed', top: 16, left: 16, zIndex: 10 }}>
-                <BackButton onClick={() => navigate(-1)} />
-            </Box>
+        <Container>
+            <Box sx={{ maxWidth: 1300, mx: 'auto', p: 4 }}>
+                <Box sx={{ position: 'fixed', top: 16, left: 16, zIndex: 10 }}>
+                    <BackButton onClick={() => navigate(-1)} />
+                </Box>
+                <ThemeSwitch />
             <Typography variant="h4" align="center" gutterBottom fontWeight={700}>
                 Write with AI
             </Typography>
@@ -598,7 +608,8 @@ ${response}
                 </Box>
             </Paper>
         </Box>
-    );
+    </Container>
+  );
 };
 
 export default WriteWithAI;

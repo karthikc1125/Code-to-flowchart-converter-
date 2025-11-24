@@ -1,7 +1,7 @@
 import { extractPython } from '../extractors/python-extractor.mjs';
 import { normalizePython } from '../normalizer/normalize-python.mjs';
 import { walk } from '../walkers/walk.mjs';
-import { ctx } from '../mermaid/context.mjs';
+import { ctx } from '../../c/mermaid/context.mjs';
 
 // Import mapping functions (reusing C mapping functions since they're similar)
 import { mapIf } from '../../c/conditional/if.mjs';
@@ -13,6 +13,7 @@ import { mapAssign } from '../../c/other-statements/assign.mjs';
 import { mapIO } from '../../c/io/io.mjs';
 import { mapDecl } from '../../c/other-statements/declaration.mjs';
 import { mapExpr } from '../../c/other-statements/expression.mjs';
+import { mapMatch, mapCase, mapDefault } from '../conditional/switch/switch.mjs';
 
 /**
  * Map Python nodes to Mermaid flowchart nodes
@@ -30,11 +31,19 @@ function mapNodePython(node, ctx) {
     case "IO": return mapIO(node, ctx);
     case "Decl": return mapDecl(node, ctx);
     case "Expr": return mapExpr(node, ctx);
+    case "Match": return mapMatch(node, ctx);
+    case "Case": 
+      // Check if this is a default case (wildcard pattern)
+      if (node.pattern && node.pattern.type === "Expr" && node.pattern.text === "_") {
+        return mapDefault(node, ctx);
+      } else {
+        return mapCase(node, ctx);
+      }
     default:
       // For unhandled node types, create a generic process node
       if (node.text) {
         const id = ctx.next();
-        ctx.add(id, `[\"${node.text}\"]`);
+        ctx.add(id, `["${node.text}"]`);
         if (ctx.last) {
           ctx.addEdge(ctx.last, id);
         }
@@ -72,7 +81,12 @@ export function generateFlowchart(sourceCode) {
     if (program && program.body) {
       // Create a walker context with our handler
       const walkerContext = {
-        handle: (node) => mapNodePython(node, context)
+        handle: (node) => mapNodePython(node, context),
+        enterBranch: (type) => context.enterBranch(type),
+        exitBranch: (type) => context.exitBranch(type),
+        completeIf: () => context.completeIf(),
+        // Add direct access to the context for case tracking
+        getContext: () => context
       };
       
       // Walk through the program body
@@ -86,6 +100,16 @@ export function generateFlowchart(sourceCode) {
   // Add the end node
   const endId = context.next();
   context.add(endId, '(["end"])');
+  
+  // For switch statements, we need to connect all case end nodes to the end
+  if (context.caseEndNodes && context.caseEndNodes.length > 0) {
+    context.caseEndNodes.forEach(caseEndId => {
+      context.addEdge(caseEndId, endId);
+    });
+    // Clear the last node since we've connected all case ends
+    context.last = null;
+  }
+  
   if (context.last) {
     context.addEdge(context.last, endId);
   }

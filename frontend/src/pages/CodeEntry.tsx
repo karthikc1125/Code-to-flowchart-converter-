@@ -5,6 +5,14 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import BackButton from '../components/BackButton';
 import { convertCodeToMermaid } from '../services/api';
 import { styled } from '@mui/material/styles';
+import ThemeSwitch from '../components/ThemeSwitchButton';
+import styledComp from 'styled-components';
+
+const Container = styledComp.div<{ theme?: { background: string, text: string } }>`
+  background-color: ${props => props.theme?.background || '#f5f7fa'};
+  color: ${props => props.theme?.text || '#222'};
+  min-height: 100vh;
+`;
 
 type LanguageType = 'select' | 'js' | 'ts' | 'python' | 'java' | 'c' | 'cpp' | 'pascal' | 'fortran';
 
@@ -141,10 +149,12 @@ const CodeEntry: React.FC = () => {
     };
 
     return (
-        <Box sx={{ maxWidth: 1300, mx: 'auto', p: 4 }}>
-            <Box sx={{ position: 'fixed', top: 16, left: 16, zIndex: 10 }}>
-                <BackButton onClick={() => navigate(-1)} />
-            </Box>
+        <Container>
+            <Box sx={{ maxWidth: 1300, mx: 'auto', p: 4 }}>
+                <Box sx={{ position: 'fixed', top: 16, left: 16, zIndex: 10 }}>
+                    <BackButton onClick={() => navigate(-1)} />
+                </Box>
+            <ThemeSwitch />
             <Typography variant="h4" align="center" gutterBottom fontWeight={700}>
                 Code to Mermaid Flow Code Converter
             </Typography>
@@ -295,7 +305,8 @@ const CodeEntry: React.FC = () => {
             
             </Paper>
         </Box>
-    );
+    </Container>
+  );
 };
 
 export default CodeEntry;

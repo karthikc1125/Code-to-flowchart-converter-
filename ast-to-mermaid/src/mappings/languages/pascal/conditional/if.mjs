@@ -1,4 +1,5 @@
 import { shapes } from "../mermaid/shapes.mjs";
+import { linkNext } from "../../c/mappings/common/common.mjs";
 
 // Helper function to create decision shape with text
 const decisionShape = (text) => shapes.decision.replace('{}', text);
@@ -17,23 +18,30 @@ export function mapIf(node, ctx) {
   
   // Create decision node for condition
   const conditionId = ctx.next();
+  
   // Remove parentheses from condition text
   let conditionText = node.cond?.text || "condition";
   if (conditionText.startsWith('(') && conditionText.endsWith(')')) {
     conditionText = conditionText.substring(1, conditionText.length - 1);
   }
-  ctx.add(conditionId, decisionShape(conditionText));
   
-  // Connect to previous node
-  if (ctx.last) {
-    ctx.addEdge(ctx.last, conditionId, "Yes");
+  // Determine if this is an "if" or "else if" statement
+  // Check if we're currently in an else branch of a parent if
+  const currentIf = ctx.currentIf && typeof ctx.currentIf === 'function' ? ctx.currentIf() : null;
+  const isElseIf = currentIf && currentIf.activeBranch === 'else';
+  const prefix = isElseIf ? 'else if ' : 'if ';
+  
+  // Add prefix to show if/else if
+  const labelText = prefix + conditionText;
+  ctx.add(conditionId, decisionShape(labelText));
+  
+  // Connect to previous node using shared linking logic
+  linkNext(ctx, conditionId);
+  
+  // Register if context for branch handling
+  if (typeof ctx.registerIf === 'function') {
+    ctx.registerIf(conditionId, !!node.else);
   }
-  
-  // Store the condition node ID for later branch connections
-  ctx.ifConditionId = conditionId;
-  ctx.thenBranchConnected = false;
-  ctx.elseBranchConnected = false;
-  ctx.hasElseBranch = !!node.else;
   
   // Set the condition node as the last node
   ctx.last = conditionId;

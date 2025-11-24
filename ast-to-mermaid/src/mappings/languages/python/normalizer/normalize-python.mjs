@@ -41,12 +41,45 @@ export function normalizePython(node) {
       };
       
     case "if_statement":
-      return {
+      // Handle if/elif/else chains properly
+      const result = {
         type: "If",
         cond: normalizePython(node.child(1)), // condition is typically at index 1 (after 'if')
         then: normalizePython(node.child(3)), // then block is typically at index 3
-        else: node.child(5) ? normalizePython(node.child(5)) : null // else block is typically at index 5
+        else: null
       };
+      
+      // Process elif and else clauses
+      // In tree-sitter-python, elif clauses and else clauses are separate child nodes
+      // We need to chain them properly: if -> elif -> elif -> else
+      let currentIf = result;
+      
+      // Process all children starting from index 4
+      for (let i = 4; i < node.childCount; i++) {
+        const child = node.child(i);
+        if (child && child.type === 'elif_clause') {
+          // Convert elif to nested if structure
+          const elifCond = normalizePython(child.child(1)); // condition after 'elif'
+          const elifBody = normalizePython(child.child(3)); // body after ':'
+          
+          // Create a new if statement for the elif
+          const elifIf = {
+            type: "If",
+            cond: elifCond,
+            then: elifBody,
+            else: null
+          };
+          
+          // Attach this elif if to the current else chain
+          currentIf.else = elifIf;
+          currentIf = elifIf;
+        } else if (child && child.type === 'else_clause') {
+          // Handle else clause - this is the final else
+          currentIf.else = normalizePython(child.child(2)); // body after 'else' and ':'
+        }
+      }
+      
+      return result;
       
     case "for_statement":
       return {
@@ -84,6 +117,63 @@ export function normalizePython(node) {
       return {
         type: "Expr",
         text: node.text
+      };
+      
+    case "match_statement":
+      // Handle Python match (switch) statements
+      // console.log('Processing match_statement:', node.text);
+      // console.log('Children count:', node.childCount);
+      
+      // Log all children to understand the structure
+      // for (let i = 0; i < node.childCount; i++) {
+      //   const child = node.child(i);
+      //   if (child) {
+      //     console.log(`  Child ${i}: ${child.type} = "${child.text}"`);
+      //   }
+      // }
+      
+      const matchCases = [];
+      
+      // Cases are inside the block child (index 3)
+      const blockChild = node.child(3);
+      if (blockChild && blockChild.type === 'block') {
+        // console.log('Processing block child with', blockChild.childCount, 'children');
+        for (let i = 0; i < blockChild.childCount; i++) {
+          const caseChild = blockChild.child(i);
+          if (caseChild && caseChild.type === 'case_clause') {
+            const normalizedCase = normalizePython(caseChild);
+            // console.log('Normalized case:', JSON.stringify(normalizedCase, null, 2));
+            matchCases.push(normalizedCase);
+          }
+        }
+      }
+      
+      const matchResult = {
+        type: "Match",
+        subject: normalizePython(node.child(1)), // subject is typically at index 1 (after 'match')
+        cases: matchCases
+      };
+      
+      // console.log('Final match result:', JSON.stringify(matchResult, null, 2));
+      return matchResult;
+      
+    case "case_clause":
+      // Handle individual case clauses in match statements
+      // console.log('Processing case_clause:', node.text);
+      // console.log('Children count:', node.childCount);
+      
+      // Log all children to understand the structure
+      // for (let i = 0; i < node.childCount; i++) {
+      //   const child = node.child(i);
+      //   if (child) {
+      //     console.log(`  Child ${i}: ${child.type} = "${child.text}"`);
+      //   }
+      // }
+      
+      return {
+        type: "Case",
+        pattern: normalizePython(node.child(1)), // pattern is typically at index 1 (after 'case')
+        body: normalizePython(node.child(3)) // body is typically at index 3 (after ':')
       };
       
     case "return_statement":

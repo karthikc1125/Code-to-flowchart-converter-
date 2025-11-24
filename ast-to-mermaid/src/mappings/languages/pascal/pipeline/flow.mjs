@@ -131,22 +131,18 @@ export function generateFlowchart(sourceCode) {
   const endId = context.next();
   context.add(endId, '(["end"])');
   
-  // Store the end node ID for switch statements
-  if (context.switchEndNodes && context.switchEndNodes.length > 0) {
-    // Update the last switch end node reference
-    context.switchEndNodes[context.switchEndNodes.length - 1] = endId;
+  // Resolve any pending joins (if statements, case statements, etc.)
+  if (typeof context.resolvePendingJoins === 'function') {
+    context.resolvePendingJoins(endId);
   }
   
-  // Connect any pending break statements to the end node
-  if (context.pendingBreaks && context.pendingBreaks.length > 0) {
-    context.pendingBreaks.forEach(breakInfo => {
-      const endNodeId = context.switchEndNodes[breakInfo.switchLevel];
-      if (endNodeId) {
-        context.addEdge(breakInfo.breakId, endNodeId);
-      }
+  // For case statements, we need to connect all case end nodes to the end
+  if (context.caseEndNodes && context.caseEndNodes.length > 0) {
+    context.caseEndNodes.forEach(caseEndId => {
+      context.addEdge(caseEndId, endId);
     });
-    // Clear pending breaks
-    context.pendingBreaks = [];
+    // Clear the last node since we've connected all case ends
+    context.last = null;
   }
   
   // Connect last node to end node (only if there's a last node and it's not null)

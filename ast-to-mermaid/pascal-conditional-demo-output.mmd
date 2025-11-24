@@ -1,0 +1,16 @@
+flowchart TD
+N1(["start"])
+N2{"if x > 0"}
+N3{"if y < 10"}
+N4{"if x > 0"}
+N5{"if x < 0"}
+N6{"case x"}
+N7{"case y"}
+N8(["end"])
+N1 --> N2
+N2 --> N3
+N3 --> N4
+N4 --> N5
+N5 --> N6
+N6 --> N7
+N7 --> N8

@@ -7,6 +7,8 @@
 import { convertAST } from '../src/index.mjs';
 import { generateFlowchart as generateCFlowchart } from '../src/mappings/languages/c/pipeline/flow.mjs';
 import { generateFlowchart as generateCppFlowchart } from '../src/mappings/languages/cpp/pipeline/flow.mjs';
+import { generateFlowchart as generatePythonFlowchart } from '../src/mappings/languages/python/pipeline/flow.mjs';
+import { generateFlowchart as generateFortranFlowchart } from '../src/mappings/languages/fortran/pipeline/flow.mjs';
 import fs from 'fs';
 
 function showHelp() {
@@ -75,6 +77,12 @@ async function main() {
     } else if (options.language === 'cpp') {
       // Use our new VTU-style flowchart generator for C++
       mermaidDiagram = generateCppFlowchart(sourceCode);
+    } else if (options.language === 'python') {
+      // Use our new VTU-style flowchart generator for Python
+      mermaidDiagram = generatePythonFlowchart(sourceCode);
+    } else if (options.language === 'fortran') {
+      // Use our new VTU-style flowchart generator for Fortran
+      mermaidDiagram = generateFortranFlowchart(sourceCode);
     } else {
       // Use the existing converter for other languages
       mermaidDiagram = await convertAST(sourceCode, options.language);

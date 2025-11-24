@@ -1,0 +1,24 @@
+flowchart TD
+N1(["start"])
+N2{"if x > 0"}
+N3{"if y < 5"}
+N4{"if x > 0"}
+N5{"case y"}
+N6["case option 1:"]
+N7["case body 1"]
+N8["case option 2:"]
+N9["case body 2"]
+N10["case option 3:"]
+N11["case body 3"]
+N12(["end"])
+N1 --> N2
+N2 --> N3
+N3 --> N4
+N4 --> N5
+N5 --> N6
+N6 --> N7
+N5 --> N8
+N8 --> N9
+N5 --> N10
+N10 --> N11
+N11 --> N12

@@ -18,14 +18,18 @@ export function mapBreakStatement(node, ctx) {
   const breakText = "break;";
   ctx.add(breakId, processShape(breakText));
   
-  // If we're in a switch statement, create a pending join
-  // The finalize context will handle connections to the next statement after switch
-  if (ctx.currentSwitchId && ctx.switchEndNodes && ctx.switchEndNodes.length > 0) {
-    // Create a pending join for this break statement
-    if (!ctx.pendingJoins) {
-      ctx.pendingJoins = [];
+  // If we're in a switch statement, track the break for proper connection
+  if (ctx.currentSwitchId) {
+    // Connect break statement to flowchart normally first
+    linkNext(ctx, breakId);
+    
+    // Then track the break statement with its switch level for later connection
+    const switchLevel = (ctx.switchEndNodes?.length || 1) - 1;
+    if (!ctx.pendingBreaks) {
+      ctx.pendingBreaks = [];
     }
-    ctx.pendingJoins.push({ edges: [{ from: breakId, label: null }] });
+    // Use a marker value that will be replaced in finalize context
+    ctx.pendingBreaks.push({ breakId, switchLevel, nextStatementId: 'NEXT_AFTER_SWITCH' });
   } else {
     // For non-switch breaks, connect break statement to flowchart normally
     linkNext(ctx, breakId);

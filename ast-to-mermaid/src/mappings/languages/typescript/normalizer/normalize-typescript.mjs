@@ -24,35 +24,42 @@ export function normalizeTypescriptAst(node) {
         body: node.children ? node.children.map(normalizeTypescriptAst).filter(Boolean) : []
       };
       
-    case "block":
-      // This is a block - process its children
+    case "statement_block":
+      // This is a block {} - process its children
       return {
         type: "Block",
-        body: node.children ? node.children.map(normalizeTypescriptAst).filter(Boolean) : []
+        body: node.children ? node.children.slice(1, -1).map(normalizeTypescriptAst).filter(Boolean) : [] // Remove { and }
       };
       
     case "if_statement":
+      // Handle if-else-if chains properly
+      let alternate = null;
+      // Check if there's an else clause (typically at index 3 in 0-indexed array)
+      if (node.child(3)) {
+        alternate = normalizeTypescriptAst(node.child(3));
+      }
+      
       return {
         type: "If",
-        cond: normalizeTypescriptAst(node.child(1)), // condition is typically at index 1 (after 'if')
-        then: normalizeTypescriptAst(node.child(3)), // then block is typically at index 3
-        else: node.child(5) ? normalizeTypescriptAst(node.child(5)) : null // else block is typically at index 5
+        test: normalizeTypescriptAst(node.child(1)), // condition is at index 1 (the parenthesized expression)
+        consequent: normalizeTypescriptAst(node.child(2)), // then block is at index 2
+        alternate: alternate
       };
       
     case "for_statement":
       return {
         type: "For",
-        init: normalizeTypescriptAst(node.child(1)), // init is typically at index 1
-        cond: normalizeTypescriptAst(node.child(3)), // condition is typically at index 3
-        update: normalizeTypescriptAst(node.child(5)), // update is typically at index 5
-        body: normalizeTypescriptAst(node.child(7)) // body is typically at index 7
+        init: normalizeTypescriptAst(node.child(2)), // init is typically at index 2
+        cond: normalizeTypescriptAst(node.child(4)), // condition is typically at index 4
+        update: normalizeTypescriptAst(node.child(6)), // update is typically at index 6
+        body: normalizeTypescriptAst(node.child(8)) // body is typically at index 8
       };
       
     case "while_statement":
       return {
         type: "While",
-        cond: normalizeTypescriptAst(node.child(1)), // condition is typically at index 1
-        body: normalizeTypescriptAst(node.child(3)) // body is typically at index 3
+        cond: normalizeTypescriptAst(node.child(2)), // condition is typically at index 2
+        body: normalizeTypescriptAst(node.child(4)) // body is typically at index 4
       };
       
     case "expression_statement":
@@ -82,6 +89,57 @@ export function normalizeTypescriptAst(node) {
         type: "Return",
         text: node.text
       };
+      
+    case "switch_statement":
+      // Handle switch statements
+      // The switch_body is typically at index 2
+      const switchBody = node.child(2);
+      const cases = [];
+      
+      // Extract cases from switch_body children
+      if (switchBody && switchBody.children) {
+        // Skip the first '{' and last '}' tokens
+        for (let i = 1; i < switchBody.children.length - 1; i++) {
+          const child = switchBody.children[i];
+          const normalized = normalizeTypescriptAst(child);
+          if (normalized) {
+            cases.push(normalized);
+          }
+        }
+      }
+      
+      return {
+        type: "Switch",
+        discriminant: normalizeTypescriptAst(node.child(1)), // switch expression is typically at index 1
+        cases: cases
+      };
+      
+    case "switch_case":
+      return {
+        type: "Case",
+        test: normalizeTypescriptAst(node.child(1)), // case value is typically at index 1
+        consequent: node.children ? node.children.slice(3).map(normalizeTypescriptAst).filter(Boolean) : [] // Skip 'case', value, and ':'
+      };
+      
+    case "switch_default":
+      return {
+        type: "Default",
+        test: null, // default case has no test value
+        consequent: node.children ? node.children.slice(2).map(normalizeTypescriptAst).filter(Boolean) : [] // Skip 'default' and ':'
+      };
+      
+    case "else_clause":
+      // Process the statement that follows 'else'
+      // This could be a single statement or another if_statement
+      if (node.children && node.children.length > 1) {
+        // The actual statement is typically at index 1
+        return normalizeTypescriptAst(node.children[1]);
+      }
+      return null;
+      
+    case "import_statement":
+      // Skip import statements - they should be ignored
+      return null;
       
     default:
       // For simple nodes with text, convert to expression

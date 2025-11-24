@@ -9,14 +9,95 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 /**
- * Very small shim to turn tree-sitter CLI output into a pseudo-AST
- * This mirrors the approach used in the Fortran extractor and is
- * tailored to the demo/test programs rather than being a full parser.
+ * Parse tree-sitter CLI output into a structured AST
+ * @param {string} cliOutput - Raw tree-sitter CLI output
+ * @param {string} sourceCode - Original source code
+ * @returns {Object} - Structured AST
  */
-function parsePascalCLIOutput(_cliOutput) {
+function parsePascalCLIOutput(cliOutput, sourceCode) {
+  // Split the output into lines
+  const lines = cliOutput.split('\n');
+  const statements = [];
+  
+  // Look for if and case statements
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    
+    // Match if statements
+    const ifMatch = line.match(/^\s*\((if(?:Else)?) \[([^\]]+)\] - \[([^\]]+)\]/);
+    if (ifMatch) {
+      const type = ifMatch[1];
+      const start = ifMatch[2];
+      const end = ifMatch[3];
+      
+      // Extract the content of this statement by counting parentheses
+      let content = '';
+      let parenCount = 1;
+      let j = i + 1;
+      
+      while (j < lines.length && parenCount > 0) {
+        const nextLine = lines[j];
+        content += nextLine + '\n';
+        
+        // Count opening and closing parentheses
+        const openCount = (nextLine.match(/\(/g) || []).length;
+        const closeCount = (nextLine.match(/\)/g) || []).length;
+        parenCount += openCount - closeCount;
+        
+        j++;
+      }
+      
+      statements.push({
+        type: type,
+        start: start,
+        end: end,
+        raw: content,
+        sourceCode: sourceCode // Pass the source code for condition extraction
+      });
+      
+      // Skip the lines we've already processed
+      i = j - 1;
+    }
+    
+    // Match case statements
+    const caseMatch = line.match(/^\s*\(case \[([^\]]+)\] - \[([^\]]+)\]/);
+    if (caseMatch) {
+      const start = caseMatch[1];
+      const end = caseMatch[2];
+      
+      // Extract the content of this statement by counting parentheses
+      let content = '';
+      let parenCount = 1;
+      let j = i + 1;
+      
+      while (j < lines.length && parenCount > 0) {
+        const nextLine = lines[j];
+        content += nextLine + '\n';
+        
+        // Count opening and closing parentheses
+        const openCount = (nextLine.match(/\(/g) || []).length;
+        const closeCount = (nextLine.match(/\)/g) || []).length;
+        parenCount += openCount - closeCount;
+        
+        j++;
+      }
+      
+      statements.push({
+        type: 'case',
+        start: start,
+        end: end,
+        raw: content,
+        sourceCode: sourceCode // Pass the source code for condition extraction
+      });
+      
+      // Skip the lines we've already processed
+      i = j - 1;
+    }
+  }
+  
   return {
     type: 'Program',
-    body: []
+    body: statements
   };
 }
 
@@ -43,7 +124,7 @@ export function extractPascal(sourceCode) {
       unlinkSync(tempFile);
 
       // Convert CLI output into a simplified AST structure
-      return parsePascalCLIOutput(cliOutput);
+      return parsePascalCLIOutput(cliOutput, sourceCode);
     } catch (cliError) {
       console.error('Pascal CLI parsing failed:', cliError.message);
       try {

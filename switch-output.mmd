@@ -1,0 +1,34 @@
+flowchart TD
+  START(["start"])
+  N1["let x: number = 2;"]
+  N2{"switch ((x))"}
+  N3["case 1:"]
+  N4[/"console.log(x is 1)"/]
+  N5["break;"]
+  N6["case 2:"]
+  N7[/"console.log(x is 2)"/]
+  N8["break;"]
+  N9["case 3:"]
+  N10[/"console.log(x is 3)"/]
+  N11["break;"]
+  N12["default:"]
+  N13[/"console.log(x is something else)"/]
+  N14["break;"]
+  N15[/"console.log(End of switch)"/]
+  END(["end"])
+  START --> N1
+  N1 --> N2
+  N2 --> N3
+  N3 --> N4
+  N4 --> N5
+  N2 --> N6
+  N6 --> N7
+  N7 --> N8
+  N2 --> N9
+  N9 --> N10
+  N10 --> N11
+  N2 --> N12
+  N12 --> N13
+  N13 --> N14
+  N13 --> N15
+  N15 --> END

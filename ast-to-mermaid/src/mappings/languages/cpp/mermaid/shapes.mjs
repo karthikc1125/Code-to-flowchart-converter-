@@ -1,4 +1,4 @@
-import { sanitizeNodeText } from '../../../c/shared/helpers.mjs';
+import { sanitizeNodeText } from '../../../../shared/helpers.mjs';
 
 const createShape = (template) => ({
   replace(marker, value) {

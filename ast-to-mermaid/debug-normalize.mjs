@@ -1,25 +1,30 @@
-import fs from 'fs';
-import { extractC } from './src/mappings/languages/c/extractors/c-extractor.mjs';
-import { normalizeC } from './src/mappings/languages/c/normalizer/normalize-c.mjs';
+import { extractPascal } from './src/mappings/languages/pascal/extractors/pascal-extractor.mjs';
+import { normalizePascal } from './src/mappings/languages/pascal/normalizer/normalize-pascal.mjs';
+import { readFileSync } from 'fs';
 
-// Read the test C file
-const sourceCode = fs.readFileSync('test-flowchart.c', 'utf8');
+console.log('Debugging Pascal normalization...\n');
 
-console.log('Testing AST extraction and normalization...');
-console.log('==========================================');
-
+// Test if statements
+console.log('=== Test 1: If Statements ===');
 try {
-  // 1. Extract AST
-  const ast = extractC(sourceCode);
-  console.log('AST extracted successfully!');
-  console.log('AST type:', ast.type);
-  console.log('AST children count:', ast.children?.length || 0);
+  const ifSource = readFileSync('test-if.pas', 'utf8');
+  const ifAST = extractPascal(ifSource);
+  console.log('Extracted AST:', JSON.stringify(ifAST, null, 2));
   
-  // 2. Normalize AST
-  const normalized = normalizeC(ast);
-  console.log('\nNormalized AST:');
-  console.log(JSON.stringify(normalized, null, 2));
+  const normalized = normalizePascal(ifAST);
+  console.log('Normalized AST:', JSON.stringify(normalized, null, 2));
 } catch (error) {
-  console.error('Error:', error.message);
-  console.error('Stack:', error.stack);
+  console.error('Error in if statement processing:', error.message);
+}
+
+console.log('\n=== Test 2: Case Statements ===');
+try {
+  const caseSource = readFileSync('test-case.pas', 'utf8');
+  const caseAST = extractPascal(caseSource);
+  console.log('Extracted AST:', JSON.stringify(caseAST, null, 2));
+  
+  const normalized = normalizePascal(caseAST);
+  console.log('Normalized AST:', JSON.stringify(normalized, null, 2));
+} catch (error) {
+  console.error('Error in case statement processing:', error.message);
 }

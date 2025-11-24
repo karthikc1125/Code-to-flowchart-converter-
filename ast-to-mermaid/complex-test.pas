@@ -1,42 +1,37 @@
-program ComplexFlowchart;
-
+program ComplexTest;
 var
-  x, y, result: integer;
-
+  a, b: integer;
 begin
-  x := 10;
-  y := 5;
+  a := 10;
+  b := 20;
   
-  // Nested if statement
-  if x > 0 then
+  // Complex nested conditions
+  if a > 5 then
   begin
-    if y > 0 then
-      writeln('Both x and y are positive')
-    else
-      writeln('x is positive but y is not');
+    writeln('a is greater than 5');
+    if b < 25 then
+    begin
+      writeln('b is less than 25');
+      if a + b > 30 then
+        writeln('Sum is greater than 30')
+      else
+        writeln('Sum is not greater than 30');
+    end;
   end
   else
   begin
-    writeln('x is not positive');
+    writeln('a is not greater than 5');
+    case b of
+      10: writeln('b is 10');
+      20: writeln('b is 20');
+      else writeln('b is something else');
+    end;
   end;
   
-  // While loop with if statement
-  result := 0;
-  while result < 3 do
+  // Loop with condition
+  while a > 0 do
   begin
-    if result = 1 then
-      writeln('Result is one')
-    else
-      writeln('Result is not one');
-    
-    result := result + 1;
+    writeln('a is ', a);
+    a := a - 1;
   end;
-  
-  // For loop
-  for x := 1 to 5 do
-  begin
-    writeln('For loop iteration: ', x);
-  end;
-  
-  writeln('Program completed');
 end.

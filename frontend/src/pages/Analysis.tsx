@@ -6,6 +6,14 @@ import { health as ollamaHealth, listModels as ollamaListModels, pullModel as ol
 import BackButton from '../components/BackButton';
 import { FaPaperPlane } from 'react-icons/fa';
 import { styled } from '@mui/material/styles';
+import ThemeSwitch from '../components/ThemeSwitchButton';
+import styledComp from 'styled-components';
+
+const Container = styledComp.div<{ theme?: { background: string, text: string } }>`
+  background-color: ${props => props.theme?.background || '#f5f7fa'};
+  color: ${props => props.theme?.text || '#222'};
+  min-height: 100vh;
+`;
 
 const ChatContainer = styled(Box)(({ theme }) => ({
     display: 'flex',
@@ -255,10 +263,12 @@ Answer this question: ${questionText}`;
     };
 
     return (
-        <Box sx={{ maxWidth: 1300, mx: 'auto', p: 4 }}>
-            <Box sx={{ position: 'fixed', top: 16, left: 16, zIndex: 10 }}>
-                <BackButton onClick={() => navigate(-1)} />
-            </Box>
+        <Container>
+            <Box sx={{ maxWidth: 1300, mx: 'auto', p: 4 }}>
+                <Box sx={{ position: 'fixed', top: 16, left: 16, zIndex: 10 }}>
+                    <BackButton onClick={() => navigate(-1)} />
+                </Box>
+                <ThemeSwitch />
                     <Typography variant="h4" align="center" gutterBottom fontWeight={700}>
                 Analyze Code
                     </Typography>
@@ -347,7 +357,8 @@ color="primary"
                 
             </Paper>
         </Box>
-    );
+    </Container>
+  );
 };
 
 export default Analysis;

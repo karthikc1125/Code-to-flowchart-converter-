@@ -15,11 +15,11 @@ export const shapes = {
   parallelogram: '[/{}\\]',
   
   // Standard box (rectangle)
-  box: '[[{}]]',
+  box: '["{}"]',
   
   // Soft edges (rounded rectangle)
   rounded: '({})',
   
   // Perfect circle
-  diamond: '{{{}}}'
+  diamond: '{"{}"}'
 };

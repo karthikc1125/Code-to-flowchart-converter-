@@ -47,6 +47,12 @@ export function ctx() {
     // Add an edge between nodes
     addEdge(fromId, toId, label = null) {
       if (!fromId || !toId) return;
+      if (fromId === toId) {
+        console.log('Warning: Attempting to add self-loop edge from', fromId, 'to', toId);
+        console.trace('Stack trace:');
+      }
+      const edge = label ? `${fromId} -->|${label}| ${toId}` : `${fromId} --> ${toId}`;
+      // console.log('Adding edge:', edge);
       if (label) {
         this.edges.push(`${fromId} -->|${label}| ${toId}`);
       } else {
@@ -155,24 +161,83 @@ export function ctx() {
             const switchIndex = this.nodeOrder.indexOf(switchId);
             
             if (switchIndex !== -1) {
-              // Find the first statement after the switch block
+              // Find the end of the switch block by looking for all nodes that are part of cases
+              let lastSwitchStatementIndex = switchIndex;
+              
+              // Look through all nodes after the switch to find the last one that's part of the switch
               for (let i = switchIndex + 1; i < this.nodeOrder.length; i++) {
                 const nodeId = this.nodeOrder[i];
                 const node = this.nodes.find(n => n.startsWith(nodeId));
                 if (node) {
-                  // Check if this node is part of the switch
-                  const isSwitchRelated = 
+                  // Check if this node is a case, default, break, or switch statement
+                  const isControlNode = 
                     node.includes('case ') || 
                     node.includes('default:') ||
                     node.includes('switch') ||
                     node.includes('break;');
                   
-                  if (!isSwitchRelated) {
-                    nextStatementId = nodeId;
-                    break;
+                  // If it's a control node, it's definitely part of the switch
+                  if (isControlNode) {
+                    lastSwitchStatementIndex = i;
+                  } else {
+                    // If it's not a control node, check if it's part of a case
+                    // by looking backwards for a case/default node without an intervening break
+                    let inCaseBlock = false;
+                    for (let j = i - 1; j > switchIndex; j--) {
+                      const prevNodeId = this.nodeOrder[j];
+                      const prevNode = this.nodes.find(n => n.startsWith(prevNodeId));
+                      if (prevNode) {
+                        if (prevNode.includes('break;')) {
+                          // Found a break, so this statement is not part of a case
+                          break;
+                        } else if (prevNode.includes('case ') || prevNode.includes('default:')) {
+                          // Found a case/default, so this statement is part of a case
+                          inCaseBlock = true;
+                          lastSwitchStatementIndex = i;
+                          break;
+                        }
+                      }
+                    }
+                    
+                    // If this statement is part of a case, update the last switch statement index
+                    if (inCaseBlock) {
+                      lastSwitchStatementIndex = i;
+                    } else {
+                      // If this statement is not part of a case, we've likely found the end of the switch block
+                      // But we should continue looking to make sure we haven't missed anything
+                      // Check if there are any more switch-related nodes after this point
+                      let hasMoreSwitchNodes = false;
+                      for (let k = i + 1; k < this.nodeOrder.length; k++) {
+                        const nextNodeId = this.nodeOrder[k];
+                        const nextNode = this.nodes.find(n => n.startsWith(nextNodeId));
+                        if (nextNode) {
+                          const isNextControlNode = 
+                            nextNode.includes('case ') || 
+                            nextNode.includes('default:') ||
+                            nextNode.includes('switch') ||
+                            nextNode.includes('break;');
+                          
+                          if (isNextControlNode) {
+                            hasMoreSwitchNodes = true;
+                            lastSwitchStatementIndex = k;
+                            break;
+                          }
+                        }
+                      }
+                      
+                      // If there are no more switch nodes after this point, we can stop
+                      if (!hasMoreSwitchNodes) {
+                        break;
+                      }
+                    }
                   }
                 }
               }
+              
+              // Now find the first statement after all switch cases
+              // We can't determine the next statement now because it hasn't been processed yet
+              // Set a marker value that we'll fix in finalize context
+              nextStatementId = 'NEXT_AFTER_SWITCH';
             }
           }
         }
@@ -182,21 +247,14 @@ export function ctx() {
       // (since we push a placeholder when entering switch)
       const currentSwitchLevel = (this.switchEndNodes?.length || 1) - 1;
       
-      // Connect pending breaks directly to the next statement after switch
+      // Let the finalize context handle connecting pending breaks to the next statement
+      // We'll update the nextStatementId in the pendingBreaks entries
       if (this.pendingBreaks && this.pendingBreaks.length > 0) {
-        const switchBreaks = this.pendingBreaks.filter(
-          b => b.switchLevel === currentSwitchLevel
-        );
-        
-        // Connect break statements directly to the next statement after switch
-        switchBreaks.forEach(b => {
-          this.addEdge(b.breakId, nextStatementId);
+        this.pendingBreaks.forEach(b => {
+          if (b.switchLevel === currentSwitchLevel) {
+            b.nextStatementId = nextStatementId;
+          }
         });
-        
-        // Remove processed breaks
-        this.pendingBreaks = this.pendingBreaks.filter(
-          b => b.switchLevel !== currentSwitchLevel
-        );
       }
       
       // Handle case connections and fall-through behavior
@@ -251,16 +309,24 @@ export function ctx() {
             this.addEdge(lastStatementInCase, nextCaseInfo.id);
           } else if (!hasBreakBetween && i === this.switchCaseNodes.length - 1) {
             // Last case without break should connect to next statement after switch
-            this.addEdge(lastStatementInCase, nextStatementId);
+            // For now, don't connect the last case without break - let finalize context handle it
+            // This prevents self-loops and other issues
+          } else if (hasBreakBetween && i === this.switchCaseNodes.length - 1) {
+            // Last case with break - the break is already connected to nextStatementId
+            // So we don't need to do anything here
           }
         }
       } else if (this.currentSwitchId) {
         // If there are no cases, connect the switch node directly to the next statement
-        this.addEdge(this.currentSwitchId, nextStatementId);
+        if (nextStatementId !== 'NEXT_AFTER_SWITCH') {
+          this.addEdge(this.currentSwitchId, nextStatementId);
+        }
       }
       
       // Set the next statement as the last node for subsequent connections
-      this.last = nextStatementId === 'END' ? null : nextStatementId;
+      // Instead of setting to null when nextStatementId is 'END', we should set it to the marker
+      // The finalize context will handle replacing the marker with the actual next statement
+      this.last = nextStatementId;
       
       // Pop the switch end node placeholder
       if (this.switchEndNodes && this.switchEndNodes.length > 0) {

@@ -4,6 +4,14 @@ import mermaid from 'mermaid';
 import { FiDownload, FiArrowLeft, FiZoomIn, FiZoomOut, FiMaximize2 } from 'react-icons/fi';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
+import ThemeSwitch from '../components/ThemeSwitchButton';
+import styled from 'styled-components';
+
+const Container = styled.div<{ theme?: { background: string, text: string } }>`
+  background-color: ${props => props.theme?.background || '#f5f7fa'};
+  color: ${props => props.theme?.text || '#222'};
+  min-height: 100vh;
+`;
 
 const defaultCode = `graph TD
 A[Start] --> B{Is it?}
@@ -178,13 +186,15 @@ const MermaidEditor: React.FC = () => {
 
 
   return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      height: '100vh',
-      backgroundColor: '#ffffff',
-      overflow: 'hidden'
-    }}>
+    <Container>
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100vh',
+        backgroundColor: 'inherit',
+        overflow: 'hidden'
+      }}>
+        <ThemeSwitch />
       {/* Header */}
       <div style={{
         display: 'flex',
@@ -192,7 +202,7 @@ const MermaidEditor: React.FC = () => {
         justifyContent: 'space-between',
         padding: '12px 24px',
         borderBottom: '1px solid #e5e7eb',
-        backgroundColor: '#ffffff',
+        backgroundColor: 'inherit',
         boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
@@ -229,7 +239,7 @@ const MermaidEditor: React.FC = () => {
             margin: 0,
             fontSize: '18px',
             fontWeight: '600',
-            color: '#111827'
+            color: 'inherit'
           }}>
             Mermaid Diagram Viewer
           </h1>
@@ -242,7 +252,7 @@ const MermaidEditor: React.FC = () => {
             alignItems: 'center',
             gap: '4px',
             padding: '4px',
-            backgroundColor: '#f3f4f6',
+            backgroundColor: 'rgba(0, 0, 0, 0.1)',
             borderRadius: '6px'
           }}>
             <button
@@ -433,7 +443,7 @@ const MermaidEditor: React.FC = () => {
         style={{
           flex: 1,
           overflow: 'auto',
-          backgroundColor: '#fafafa',
+          backgroundColor: 'inherit',
           position: 'relative',
           scrollBehavior: 'smooth'
         }}
@@ -456,7 +466,7 @@ const MermaidEditor: React.FC = () => {
             <div
               ref={previewRef}
               style={{
-                backgroundColor: '#ffffff',
+                backgroundColor: 'inherit',
                 borderRadius: '8px',
                 padding: '24px',
                 boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
@@ -469,6 +479,7 @@ const MermaidEditor: React.FC = () => {
         </div>
       </div>
     </div>
+    </Container>
   );
 };
 

@@ -2,6 +2,33 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiArrowRight, FiCode, FiFileText, FiZap } from 'react-icons/fi';
 import styles from '../styles/Welcome.module.css';
+import ThemeSwitch from '../components/ThemeSwitchButton';
+import styledComp from 'styled-components';
+
+const Container = styledComp.div<{ theme?: { background: string, text: string } }>`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background-color: ${props => props.theme?.background || '#f3f4f6'};
+  padding: 1rem;
+  color: ${props => props.theme?.text || '#222'};
+`;
+
+const Title = styledComp.h1<{ theme?: { text: string } }>`
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: ${props => props.theme?.text || '#1f2937'};
+  margin-bottom: 1rem;
+`;
+
+const Subtitle = styledComp.p<{ theme?: { text: string } }>`
+  font-size: 1.5rem;
+  color: ${props => props.theme?.text || '#4b5563'};
+  margin-bottom: 2rem;
+  text-align: center;
+`;
 
 const Instructions: React.FC = () => {
   const navigate = useNavigate();
@@ -11,12 +38,13 @@ const Instructions: React.FC = () => {
   };
 
   return (
-    <div className={styles.container}>
+    <Container>
+      <ThemeSwitch />
       <header className={styles.header}>
-        <h1 className={styles.title}>How to Use This Tool</h1>
-        <p className={styles.subtitle}>
+        <Title>How to Use This Tool</Title>
+        <Subtitle>
           Follow these simple steps to convert your code into beautiful flowcharts
-        </p>
+        </Subtitle>
       </header>
 
       <section style={{ maxWidth: 800, margin: '32px auto', padding: '0 16px' }}>
@@ -135,7 +163,7 @@ const Instructions: React.FC = () => {
           <li style={{ lineHeight: 1.5 }}>Comment your code for better understanding</li>
         </ul>
       </section>
-    </div>
+    </Container>
   );
 };
 

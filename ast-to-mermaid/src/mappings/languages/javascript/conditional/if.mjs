@@ -1,5 +1,5 @@
 import { shapes } from "../../../../mermaid/shapes.mjs";
-import { linkNext } from "../../../c/mappings/common/common.mjs";
+import { linkNext } from "../mappings/common/common.mjs";
 
 // Helper function to create decision shape with text
 const decisionShape = (text) => shapes.decision.replace('{}', text);

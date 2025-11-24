@@ -42,8 +42,8 @@ export function mapSwitchStatement(node, ctx, mapper) {
     });
   }
   
-  // Clear switch-specific context
-  ctx.currentSwitchId = null;
+  // Don't clear switch-specific context here - let finalize context handle it
+  // ctx.currentSwitchId will be cleared in finalizeFlowContext
 }
 
 /**
@@ -52,7 +52,7 @@ export function mapSwitchStatement(node, ctx, mapper) {
  * @param {Object} node - Normalized case statement node
  * @param {Object} ctx - Context for flowchart generation
  */
-export function mapCase(node, ctx) {
+export function mapCase(node, ctx, mapper) {
   if (!node || !ctx || !ctx.currentSwitchId) return;
 
   // Create process node for case statement
@@ -70,17 +70,25 @@ export function mapCase(node, ctx) {
   // Connect from switch node to this case (will be refined later)
   ctx.addEdge(ctx.currentSwitchId, caseId);
 
-  // Set as last node to maintain sequential flow within cases
-  ctx.last = caseId;
-  
-  // Process the consequent statements using the mapper
-  if (node.consequent && Array.isArray(node.consequent)) {
+  // Process the consequent statements
+  if (node.consequent && Array.isArray(node.consequent) && mapper) {
+    // Store the current switch ID to ensure it's available during consequent processing
+    const originalSwitchId = ctx.currentSwitchId;
+    const originalLast = ctx.last;
+    
+    // Set the case node as the last node so consequent statements connect to it
+    ctx.last = caseId;
+    
+    // Process each consequent statement
     node.consequent.forEach(statement => {
-      // We need to process these statements through the walker
-      // But we don't have direct access to the walker here
-      // For now, we'll just set the last node to the case node
-      // The consequent statements will be processed by the pipeline mapper
+      mapper(statement, ctx);
     });
+    
+    // Restore the original context state
+    ctx.last = originalLast;
+    if (!ctx.currentSwitchId && originalSwitchId) {
+      ctx.currentSwitchId = originalSwitchId;
+    }
   }
 }
 
@@ -90,7 +98,7 @@ export function mapCase(node, ctx) {
  * @param {Object} node - Normalized default case node
  * @param { Object } ctx - Context for flowchart generation
  */
-export function mapDefault(node, ctx) {
+export function mapDefault(node, ctx, mapper) {
   if (!node || !ctx || !ctx.currentSwitchId) return;
 
   // Create process node for default case
@@ -107,13 +115,24 @@ export function mapDefault(node, ctx) {
   // Connect from switch node to this default case
   ctx.addEdge(ctx.currentSwitchId, defaultId);
 
-  // Set as last node to maintain sequential flow within cases
-  ctx.last = defaultId;
-  
   // Process the consequent statements
-  if (node.consequent && Array.isArray(node.consequent)) {
+  if (node.consequent && Array.isArray(node.consequent) && mapper) {
+    // Store the current switch ID to ensure it's available during consequent processing
+    const originalSwitchId = ctx.currentSwitchId;
+    const originalLast = ctx.last;
+    
+    // Set the default node as the last node so consequent statements connect to it
+    ctx.last = defaultId;
+    
+    // Process each consequent statement
     node.consequent.forEach(statement => {
-      // The consequent statements will be processed by the pipeline mapper
+      mapper(statement, ctx);
     });
+    
+    // Restore the original context state
+    ctx.last = originalLast;
+    if (!ctx.currentSwitchId && originalSwitchId) {
+      ctx.currentSwitchId = originalSwitchId;
+    }
   }
 }

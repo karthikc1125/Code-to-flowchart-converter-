@@ -49,6 +49,15 @@ export function normalizeFortran(node, sourceCode = '') {
     case 'if_statement':
       return normalizeIf(node, sourceCode);
 
+    case 'select_case_statement':
+      return normalizeSelectCase(node, sourceCode);
+
+    case 'case_statement':
+      return normalizeCase(node, sourceCode);
+
+    case 'case_default_statement':
+      return normalizeCaseDefault(node, sourceCode);
+
     case 'stop_statement':
     case 'return_statement':
       return {
@@ -135,6 +144,160 @@ function normalizeIf(node, source) {
     },
     then: bodyChildren,
     else: elseChildren
+  };
+}
+
+function normalizeSelectCase(node, source) {
+  // Find the selector node which contains the discriminant
+  const selectorNode = (node.children || []).find(child => child.type === 'selector');
+  
+  const caseChildren = (node.children || []).filter(child => 
+    child.type === 'case_statement' || 
+    child.type === 'case_default_statement'
+  );
+  
+  const normalizedCases = [];
+  caseChildren.forEach(caseChild => {
+    const normalizedCase = normalizeFortran(caseChild, source);
+    if (normalizedCase) {
+      if (Array.isArray(normalizedCase)) {
+        normalizedCases.push(...normalizedCase);
+      } else {
+        normalizedCases.push(normalizedCase);
+      }
+    }
+  });
+  
+  // Extract the discriminant text from the selector
+  let discriminantText = '';
+  if (selectorNode && selectorNode.children && selectorNode.children.length > 0) {
+    // Get the identifier inside the selector
+    const identifierNode = selectorNode.children.find(child => child.type === 'identifier');
+    if (identifierNode) {
+      discriminantText = extractText(identifierNode);
+    }
+  }
+  
+  return {
+    type: 'SelectCase',
+    discriminant: {
+      type: 'Expr',
+      text: discriminantText
+    },
+    cases: normalizedCases
+  };
+}
+
+function normalizeCase(node, source) {
+  // Check if this is a default case
+  const isDefaultCase = (node.children || []).some(child => child.type === 'default');
+  
+  if (isDefaultCase) {
+    // Handle default case
+    const bodyChildren = (node.children || []).filter(child => 
+      child.type !== 'case_statement' && 
+      child.type !== 'default' &&
+      !child.type?.startsWith('end_')
+    );
+    
+    const normalizedBody = [];
+    bodyChildren.forEach(child => {
+      const normalized = normalizeFortran(child, source);
+      if (normalized) {
+        if (Array.isArray(normalized)) {
+          normalizedBody.push(...normalized);
+        } else {
+          normalizedBody.push(normalized);
+        }
+      }
+    });
+    
+    return {
+      type: 'CaseDefault',
+      consequent: normalizedBody
+    };
+  }
+  
+  // Handle regular case
+  // Find the case value range list which contains the case value
+  const valueListNode = (node.children || []).find(child => 
+    child.type === 'case_value_range_list'
+  );
+  
+  const bodyChildren = (node.children || []).filter(child => 
+    child.type !== 'case_statement' && 
+    !child.type?.startsWith('end_') &&
+    child !== valueListNode
+  );
+  
+  const normalizedBody = [];
+  bodyChildren.forEach(child => {
+    const normalized = normalizeFortran(child, source);
+    if (normalized) {
+      if (Array.isArray(normalized)) {
+        normalizedBody.push(...normalized);
+      } else {
+        normalizedBody.push(normalized);
+      }
+    }
+  });
+  
+  // Extract the case value text from the value list
+  let caseValueText = '';
+  if (valueListNode && valueListNode.children && valueListNode.children.length > 0) {
+    // Handle extent specifiers (ranges like 90:100)
+    const extentSpecifier = valueListNode.children.find(child => child.type === 'extent_specifier');
+    if (extentSpecifier && extentSpecifier.children && extentSpecifier.children.length >= 2) {
+      const firstLiteral = extentSpecifier.children[0];
+      const secondLiteral = extentSpecifier.children[1];
+      if (firstLiteral.type === 'number_literal' && secondLiteral.type === 'number_literal') {
+        caseValueText = `${extractText(firstLiteral)}:${extractText(secondLiteral)}`;
+      }
+    } else {
+      // Handle single values
+      const literalNode = valueListNode.children.find(child => 
+        child.type === 'number_literal' || 
+        child.type === 'identifier'
+      );
+      if (literalNode) {
+        caseValueText = extractText(literalNode);
+      }
+    }
+  }
+  
+  return {
+    type: 'Case',
+    test: {
+      type: 'Expr',
+      text: caseValueText,
+      value: caseValueText
+    },
+    consequent: normalizedBody
+  };
+}
+
+function normalizeCaseDefault(node, source) {
+  const bodyChildren = (node.children || []).filter(child => 
+    child.type !== 'case_default_statement' && 
+    child.type !== 'default' &&
+    !child.type?.startsWith('end_')
+  );
+  
+  const normalizedBody = [];
+  bodyChildren.forEach(child => {
+    const normalized = normalizeFortran(child, source);
+    if (normalized) {
+      if (Array.isArray(normalized)) {
+        normalizedBody.push(...normalized);
+      } else {
+        normalizedBody.push(normalized);
+      }
+    }
+  });
+  
+  return {
+    type: 'CaseDefault',
+    consequent: normalizedBody
   };
 }
 

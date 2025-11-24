@@ -1,0 +1,10 @@
+flowchart TD
+  START(["start"])
+  N1["let x: number = 10;"]
+  N2{"if x > 5"}
+  N3[/console.log(x is greater than 5)\]
+  END(["end"])
+  START --> N1
+  N2 -->|Yes| N3
+  N3 --> END
+  N2 -->|No| END

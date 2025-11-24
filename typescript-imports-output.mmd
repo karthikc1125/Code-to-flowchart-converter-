@@ -1,0 +1,11 @@
+flowchart TD
+  START(["start"])
+  N1["import { readFileSync } from 'fs';"]
+  N2["let x: number = 10;"]
+  N3{"if x > 5"}
+  N4[/console.log(x is greater than 5)\]
+  END(["end"])
+  START --> N1
+  N3 -->|Yes| N4
+  N4 --> END
+  N3 -->|No| END
